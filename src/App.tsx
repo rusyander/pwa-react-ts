@@ -1,18 +1,35 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
 
-const URL = "https://jsonplaceholder.typicode.com/users/1/posts";
+const URLDataUserPosts = "https://jsonplaceholder.typicode.com/users/1/posts";
+const URLDataUserTodos = "https://jsonplaceholder.typicode.com/users/1/todos";
 
-interface DataProps {
+interface DataUserPostsProps {
+  body: string;
   userId: number;
   id: number;
   title: string;
-  body: string;
 }
 
-const DataList: React.FC<DataProps> = (data) => {
+interface DataUserTodosProps {
+  userId: number;
+  id: number;
+  title: string;
+  completed: boolean;
+}
+
+type ResponseData<T> = T extends () => Promise<infer DataUserPostsProps>
+  ? DataUserPostsProps
+  : DataUserTodosProps;
+
+const fetchData = async (url: string) => {
+  const response = await fetch(url);
+  return await response.json();
+};
+
+const DataListPosts: React.FC<DataUserPostsProps> = (data) => {
   return (
     <>
       <h1>{data.title}</h1>
@@ -22,21 +39,35 @@ const DataList: React.FC<DataProps> = (data) => {
   );
 };
 
+const DataListTodos: React.FC<DataUserTodosProps> = (data) => {
+  return (
+    <>
+      <h1>{data.title}</h1>
+      <h3>{data.id}</h3>
+      <h3>{String(data.completed)}</h3>
+    </>
+  );
+};
+
 function App() {
   const [count, setCount] = useState(0);
-  const [data, setData] = useState([]);
-
-  const fetchData = async () => {
-    const response = await fetch(URL);
-    const data = await response.json();
-    setData(data);
-  };
-
-  console.log(data);
+  const [data, setData] = useState<ResponseData<typeof fetchData>[]>([]);
+  const [changeUrl, setChangeUrl] = useState(URLDataUserPosts);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const fetchDataAndSetData = async () => {
+      const fetchedData = await fetchData(changeUrl);
+      setData(fetchedData);
+    };
+
+    fetchDataAndSetData();
+  }, [changeUrl]);
+
+  const handleChangeUrl = () => {
+    setChangeUrl(
+      changeUrl === URLDataUserPosts ? URLDataUserTodos : URLDataUserPosts
+    );
+  };
 
   return (
     <>
@@ -60,10 +91,17 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
+      <button onClick={handleChangeUrl}>change url</button>
 
       <div>
         {data?.map((data) => (
-          <DataList {...data} />
+          <Fragment key={data.id}>
+            {changeUrl === URLDataUserPosts ? (
+              <DataListPosts {...data} />
+            ) : (
+              <DataListTodos {...data} />
+            )}
+          </Fragment>
         ))}
       </div>
     </>
